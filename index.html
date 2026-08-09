@@ -1813,17 +1813,15 @@ th, td { border: 1px solid #000 !important; }
 </div>
 
 <script type="module">
-  // Import the functions you need from the SDKs you need
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-app.js";
-  import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-analytics.js";
-  // TODO: Add SDKs for Firebase products that you want to use
-  // https://firebase.google.com/docs/web/setup#available-libraries
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+  import { 
+    getDatabase, ref, push, get, child, update, onValue 
+  } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
-  // Your web app's Firebase configuration
-  // For Firebase JS SDK v7.20.0 and later, measurementId is optional
   const firebaseConfig = {
     apiKey: "AIzaSyDUqT6GUmVGhD3blAL4VYKepScc-h9jzaY",
     authDomain: "e-rekap-matsanewa.firebaseapp.com",
+    databaseURL: "https://e-rekap-matsanewa-default-rtdb.firebaseio.com/", // WAJIB ADA (Sesuaikan jika URL database Anda berbeda)
     projectId: "e-rekap-matsanewa",
     storageBucket: "e-rekap-matsanewa.firebasestorage.app",
     messagingSenderId: "947808583882",
@@ -1831,10 +1829,13 @@ th, td { border: 1px solid #000 !important; }
     measurementId: "G-H3V6829QMP"
   };
 
-  // Initialize Firebase
+  // Inisialisasi Firebase & Realtime Database
   const app = initializeApp(firebaseConfig);
-  const analytics = getAnalytics(app);
+  const db = getDatabase(app);
 
+  window.db = db;
+
+  // Tempatkan fungsi-fungsi (addKasTransaction, loadKasData, dll) di bawah baris ini
 <!-- Firebase SDK (Realtime Database Modular v10) -->
   window.db = db;
 
