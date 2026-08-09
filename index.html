@@ -1831,6 +1831,272 @@ th, td { border: 1px solid #000 !important; }
   // Initialize Firebase
   const app = initializeApp(firebaseConfig);
   const analytics = getAnalytics(app);
+
+<!-- Firebase SDK (Realtime Database Modular v10) -->
+  window.db = db;
+
+  // ==========================================
+  // 2. MODUL KAS GUDEP
+  // ==========================================
+  window.addKasTransaction = async function(event) {
+    event.preventDefault();
+    const data = {
+      tanggal: document.getElementById('kas-tanggal').value,
+      jenis: document.getElementById('kas-jenis').value,
+      keterangan: document.getElementById('kas-keterangan').value,
+      nominal: Number(document.getElementById('kas-nominal').value) || 0,
+      createdAt: Date.now()
+    };
+
+    try {
+      await push(ref(db, 'kas_gudep'), data);
+      alert("Transaksi Kas berhasil disimpan!");
+      event.target.reset();
+    } catch (err) {
+      console.error("Gagal simpan Kas:", err);
+    }
+  };
+
+  function loadKasData() {
+    const kasRef = ref(db, 'kas_gudep');
+    onValue(kasRef, (snapshot) => {
+      const tbody = document.getElementById('kas-table-body');
+      if (!tbody) return;
+      tbody.innerHTML = '';
+
+      if (snapshot.exists()) {
+        const data = snapshot.val();
+        // Konversi object ke array dan urutkan dari yang terbaru
+        const items = Object.keys(data).map(key => ({ id: key, ...data[key] }));
+        items.sort((a, b) => b.createdAt - a.createdAt);
+
+        items.forEach((item) => {
+          const row = `<tr>
+            <td>${item.tanggal}</td>
+            <td>${item.keterangan}</td>
+            <td class="text-right">${item.jenis === 'Pemasukan' ? 'Rp' + item.nominal.toLocaleString() : '-'}</td>
+            <td class="text-right">${item.jenis === 'Pengeluaran' ? 'Rp' + item.nominal.toLocaleString() : '-'}</td>
+            <td class="col-running-saldo">-</td>
+          </tr>`;
+          tbody.innerHTML += row;
+        });
+      }
+    });
+  }
+
+  // ==========================================
+  // 3. MODUL KEWIRAUSAHAAN
+  // ==========================================
+  window.addWirausahaEntry = async function(event) {
+    event.preventDefault();
+    const omset = Number(document.getElementById('wira-omset').value) || 0;
+    const modal = Number(document.getElementById('wira-modal').value) || 0;
+
+    const data = {
+      tanggal: document.getElementById('wira-tanggal').value,
+      namaUsaha: document.getElementById('wira-nama').value,
+      omset: omset,
+      modal: modal,
+      labaBersih: omset - modal,
+      createdAt: Date.now()
+    };
+
+    try {
+      await push(ref(db, 'wirausaha'), data);
+      alert("Laporan Wirausaha berhasil disimpan!");
+      event.target.reset();
+    } catch (err) {
+      console.error("Gagal simpan Wirausaha:", err);
+    }
+  };
+
+  function loadWirausahaData() {
+    const wiraRef = ref(db, 'wirausaha');
+    onValue(wiraRef, (snapshot) => {
+      const tbody = document.getElementById('wirausaha-table-body');
+      if (!tbody) return;
+      tbody.innerHTML = '';
+
+      if (snapshot.exists()) {
+        const data = snapshot.val();
+        const items = Object.keys(data).map(key => ({ id: key, ...data[key] }));
+        items.sort((a, b) => b.createdAt - a.createdAt);
+
+        items.forEach((item) => {
+          const row = `<tr>
+            <td>${item.tanggal}</td>
+            <td>${item.namaUsaha}</td>
+            <td class="text-right">Rp${item.omset.toLocaleString()}</td>
+            <td class="text-right">Rp${item.modal.toLocaleString()}</td>
+            <td class="text-right">Rp${item.labaBersih.toLocaleString()}</td>
+            <td class="col-running-saldo">-</td>
+          </tr>`;
+          tbody.innerHTML += row;
+        });
+      }
+    });
+  }
+
+  // ==========================================
+  // 4. MODUL INVENTARIS & ASET
+  // ==========================================
+  window.addAsetEntry = async function(event) {
+    event.preventDefault();
+    const jumlah = Number(document.getElementById('asset-jumlah').value) || 0;
+
+    const data = {
+      namaAset: document.getElementById('asset-nama').value,
+      lokasi: document.getElementById('asset-lokasi').value,
+      totalUnit: jumlah,
+      tersedia: jumlah,
+      dipinjam: 0,
+      hilang: 0,
+      createdAt: Date.now()
+    };
+
+    try {
+      await push(ref(db, 'master_aset'), data);
+      alert("Master Aset berhasil ditambahkan!");
+      event.target.reset();
+    } catch (err) {
+      console.error("Gagal tambah aset:", err);
+    }
+  };
+
+  window.processPeminjamanEntry = async function(event) {
+    event.preventDefault();
+    const assetId = document.getElementById('peminjaman-asset-id').value;
+    const jenis = document.getElementById('peminjaman-jenis').value;
+    const jumlah = Number(document.getElementById('peminjaman-jumlah').value) || 0;
+
+    if (!assetId) {
+      alert("Pilih barang terlebih dahulu!");
+      return;
+    }
+
+    const dataLog = {
+      tanggal: new Date().toISOString().split('T')[0],
+      assetId: assetId,
+      jenis: jenis,
+      penanggungJawab: document.getElementById('peminjaman-nama').value,
+      jumlah: jumlah,
+      keterangan: document.getElementById('peminjaman-keterangan').value || "-",
+      createdAt: Date.now()
+    };
+
+    try {
+      // 1. Simpan Log Peminjaman
+      await push(ref(db, 'log_peminjaman'), dataLog);
+
+      // 2. Ambil data aset saat ini & update stoknya
+      const assetSnapshot = await get(child(ref(db), `master_aset/${assetId}`));
+      if (assetSnapshot.exists()) {
+        const currentAsset = assetSnapshot.val();
+        let updateData = {};
+
+        if (jenis === "Pinjam") {
+          updateData = {
+            tersedia: (currentAsset.tersedia || 0) - jumlah,
+            dipinjam: (currentAsset.dipinjam || 0) + jumlah
+          };
+        } else if (jenis === "Kembali") {
+          updateData = {
+            tersedia: (currentAsset.tersedia || 0) + jumlah,
+            dipinjam: (currentAsset.dipinjam || 0) - jumlah
+          };
+        } else if (jenis === "Hilang") {
+          updateData = {
+            dipinjam: (currentAsset.dipinjam || 0) - jumlah,
+            hilang: (currentAsset.hilang || 0) + jumlah
+          };
+        }
+
+        await update(ref(db, `master_aset/${assetId}`), updateData);
+      }
+
+      alert("Transaksi barang berhasil diproses!");
+      event.target.reset();
+    } catch (err) {
+      console.error("Gagal memproses transaksi barang:", err);
+    }
+  };
+
+  function loadAsetData() {
+    const asetRef = ref(db, 'master_aset');
+    onValue(asetRef, (snapshot) => {
+      const tbody = document.getElementById('master-aset-table-body');
+      const selectAsset = document.getElementById('peminjaman-asset-id');
+
+      if (tbody) tbody.innerHTML = '';
+      if (selectAsset) selectAsset.innerHTML = '<option value="">-- Pilih Barang --</option>';
+
+      if (snapshot.exists()) {
+        const data = snapshot.val();
+        let no = 1;
+
+        Object.keys(data).forEach((id) => {
+          const item = data[id];
+
+          // Render Tabel Master Aset
+          if (tbody) {
+            const row = `<tr>
+              <td>${no++}</td>
+              <td>${item.namaAset}</td>
+              <td>${item.lokasi}</td>
+              <td class="text-right">${item.totalUnit}</td>
+              <td class="text-right">${item.tersedia}</td>
+              <td class="text-right">${item.dipinjam}</td>
+              <td class="text-right">${item.hilang}</td>
+            </tr>`;
+            tbody.innerHTML += row;
+          }
+
+          // Render Dropdown Pilihan Barang
+          if (selectAsset) {
+            selectAsset.innerHTML += `<option value="${id}">${item.namaAset} (${item.lokasi})</option>`;
+          }
+        });
+      }
+    });
+  }
+
+  function loadLogPeminjamanData() {
+    const logRef = ref(db, 'log_peminjaman');
+    onValue(logRef, (snapshot) => {
+      const tbody = document.getElementById('table-log-peminjaman')?.querySelector('tbody');
+      if (!tbody) return;
+      tbody.innerHTML = '';
+
+      if (snapshot.exists()) {
+        const data = snapshot.val();
+        const items = Object.keys(data).map(key => ({ id: key, ...data[key] }));
+        items.sort((a, b) => b.createdAt - a.createdAt);
+
+        let no = 1;
+        items.forEach((item) => {
+          const row = `<tr>
+            <td>${no++}</td>
+            <td>${item.tanggal}</td>
+            <td>${item.assetId}</td>
+            <td>${item.penanggungJawab}</td>
+            <td>${item.jenis}</td>
+            <td class="text-right">${item.jumlah}</td>
+            <td>${item.keterangan}</td>
+          </tr>`;
+          tbody.innerHTML += row;
+        });
+      }
+    });
+  }
+
+  // Listener data Realtime saat halaman dibuka
+  window.addEventListener('DOMContentLoaded', () => {
+    loadKasData();
+    loadWirausahaData();
+    loadAsetData();
+    loadLogPeminjamanData();
+  });
+
 </script>
         
 <script>
