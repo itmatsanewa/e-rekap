@@ -1850,7 +1850,7 @@ th, td { border: 1px solid #000 !important; }
 
     try {
       await push(ref(db, 'kas_gudep'), data);
-      alert("Transaksi Kas berhasil disimpan!");
+     // alert("Transaksi Kas berhasil disimpan!");
       event.target.reset();
     } catch (err) {
       console.error("Gagal simpan Kas:", err);
@@ -1903,7 +1903,7 @@ th, td { border: 1px solid #000 !important; }
 
     try {
       await push(ref(db, 'wirausaha'), data);
-      alert("Laporan Wirausaha berhasil disimpan!");
+      //alert("Laporan Wirausaha berhasil disimpan!");
       event.target.reset();
     } catch (err) {
       console.error("Gagal simpan Wirausaha:", err);
@@ -1956,7 +1956,7 @@ th, td { border: 1px solid #000 !important; }
 
     try {
       await push(ref(db, 'master_aset'), data);
-      alert("Master Aset berhasil ditambahkan!");
+      //alert("Master Aset berhasil ditambahkan!");
       event.target.reset();
     } catch (err) {
       console.error("Gagal tambah aset:", err);
@@ -2014,7 +2014,7 @@ th, td { border: 1px solid #000 !important; }
         await update(ref(db, `master_aset/${assetId}`), updateData);
       }
 
-      alert("Transaksi barang berhasil diproses!");
+     // alert("Transaksi barang berhasil diproses!");
       event.target.reset();
     } catch (err) {
       console.error("Gagal memproses transaksi barang:", err);
